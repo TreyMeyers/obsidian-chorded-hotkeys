@@ -1,17 +1,18 @@
 .chords-search,
 .chords-text-area {
-    width: calc(100%);
+	width: 100%;
 }
 
 .chords-key {
-    width: 15%;
+	width: 15%;
 }
 
 .chords-text-area {
-    height: 30px;
-    resize: vertical;
+	height: 30px;
+	resize: vertical;
 }
 
-.chords-error {
-    border-color: red !important;
+.chords-error,
+.chords-error:focus {
+	border-color: var(--text-error);
 }

@@ -11,7 +11,7 @@ The use of chorded hotkeys is that it lets you quickly and easily trigger an act
 You might find this plugin helpful if there are specific commands you use often, templates you include frequently, or patterns of text you repeat.
 
 ## Creating Your First Chord
-1. After installing, go to the Chored Hotkeys settings tab.
+1. After installing, go to the Chorded Hotkeys settings tab.
 2. Click 'Add new chord' it will default to a 'Text' chord, which will be a simple text insertion.
 3. The first field is the chord-trigger, the set of keys to execute the chord, these are the keys you'll have to press simultaneously to trigger the chord. So keep it short, Between two and four letters work best. For now, put 'hew' in the first box.
 4. The second field is the value for the chord, it's treated differently depending on the chord type. For a text chord, it's the text to insert. Put 'Hello World'.
@@ -27,8 +27,10 @@ The current chord types are:
 *Remark*: Since the order of key-presses doesn't matter, the chord-triggers of 'hew', 'hwe', 'ehw', etc. are all considered duplicates. Each chord must have a unique trigger.
 
 ## Tags 
-A tag is a special element added to a chord to augment it's effect.
+A tag is a special element added to a chord to augment its effect.
 Currently there is only one tag, the cursor tag. Adding '{c}' in the value field of a text chord will move the cursor to that position upon activation.
+
+To insert a literal `{c}`, escape it as `\{c}`. To insert a literal backslash, use `\\`.
 
 ## Demo
 https://user-images.githubusercontent.com/14039575/199102931-e87a107d-202f-42e9-8247-10f9b4d6f397.mp4

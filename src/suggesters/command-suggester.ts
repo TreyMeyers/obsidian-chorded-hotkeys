@@ -1,28 +1,25 @@
-import { App } from "obsidian";
-import { TextInputSuggest } from "./suggest";
+import { AbstractInputSuggest, App, Command } from "obsidian";
 
-export class CommandSuggster extends TextInputSuggest<string> {
-    private _commands: Array<string>;
+/**
+ * Suggests command names for a text input
+ */
+export class CommandSuggest extends AbstractInputSuggest<Command> {
+	public constructor(app: App, inputEl: HTMLInputElement) {
+		super(app, inputEl);
 
-    constructor(app: App, inputEl: HTMLInputElement | HTMLTextAreaElement) {
-        super(app, inputEl);
+		this.onSelect(command => {
+			this.setValue(command.name);
+			inputEl.trigger("input");
+			this.close();
+		});
+	}
 
-        // @ts-ignore
-        this._commands = app.commands.listCommands().map(c => c.name);
-    }
+	protected getSuggestions(query: string): Command[] {
+		const lowerCaseQuery = query.toLowerCase();
+		return this.app.commands.listCommands().filter(c => c.name.toLowerCase().includes(lowerCaseQuery));
+	}
 
-    public getSuggestions(inputStr?: string | undefined): string[] {
-        const lowerCaseInputStr = inputStr?.toLowerCase() ?? "";
-        return this._commands.filter(c => c.toLowerCase().contains(lowerCaseInputStr));
-    }
-
-    public renderSuggestion(item: string, el: HTMLElement): void {
-        el.setText(item);
-    }
-
-    public selectSuggestion(item: string, evt: KeyboardEvent | MouseEvent): void {
-        this.inputEl.value = item;
-        this.inputEl.trigger("input");
-        this.close();
-    }
+	public renderSuggestion(command: Command, el: HTMLElement): void {
+		el.setText(command.name);
+	}
 }

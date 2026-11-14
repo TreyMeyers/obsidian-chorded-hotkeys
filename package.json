@@ -1,34 +1,29 @@
 {
-    "name": "obsidian-chorded-hotkeys",
-    "version": "1.1.0",
-    "description": "Type multiple letters at the same time to trigger text insertion, template insertion, or command execution.",
-    "main": "main.js",
-    "scripts": {
-        "dev": "node esbuild.config.mjs",
-        "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-        "version": "node version-bump.mjs && git add manifest.json versions.json"
-    },
-    "keywords": [],
-    "author": "",
-    "license": "MIT",
-    "devDependencies": {
-        "@types/node": "^16.11.6",
-        "@typescript-eslint/eslint-plugin": "5.29.0",
-        "@typescript-eslint/parser": "5.29.0",
-        "builtin-modules": "3.3.0",
-        "esbuild": "0.14.47",
-        "obsidian": "latest",
-        "tslib": "2.4.0",
-        "typescript": "4.7.4"
-    },
-    "dependencies": {
-        "codemirror": "^6.0.0",
-        "@codemirror/commands": "^6.0.0",
-        "@codemirror/lang-markdown": "^6.0.0",
-        "@codemirror/language": "https://github.com/lishid/cm-language",
-        "@codemirror/search": "^6.0.0",
-        "@codemirror/state": "^6.0.0",
-        "@codemirror/view": "^6.0.0",
-        "@popperjs/core": "^2.11.2"
-    }
+	"name": "obsidian-chorded-hotkeys",
+	"version": "1.1.0",
+	"description": "Type multiple letters at the same time to trigger text insertion, template insertion, or command execution.",
+	"main": "main.js",
+	"type": "module",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"lint": "eslint .",
+		"test": "vitest run",
+		"version": "node version-bump.mjs && git add manifest.json versions.json"
+	},
+	"keywords": [],
+	"author": "Trey Connor Meyers",
+	"license": "MIT",
+	"devDependencies": {
+		"@eslint/js": "^9.39.5",
+		"@types/node": "^26.6.6",
+		"esbuild": "^0.28.2",
+		"eslint": "^9.39.5",
+		"eslint-plugin-obsidianmd": "^0.5.1",
+		"obsidian": "^1.14.4",
+		"tslib": "^2.9.1",
+		"typescript": "^5.9.3",
+		"typescript-eslint": "^8.72.2",
+		"vitest": "^5.1.0"
+	}
 }

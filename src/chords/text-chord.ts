@@ -1,72 +1,49 @@
-import { Editor } from "obsidian";
-import { replaceKeyInput } from "./chord-utils";
+import type { ChordContext } from "./chord-types";
+import { replaceKeyInput, setCursorAtOffset } from "./chord-utils";
+
+const CURSOR_TAG = "{c}";
 
 /**
- * Replaces the user input with the replacement text
- * @param editor editor for active file
+ * Replaces the user input with the chord's text
+ * @param context chord context
  * @param key user input to trigger the chord
- * @param value file path
+ * @param value text to insert, may contain tags
  */
-export default function execute(editor: Editor, key: string, value: string): void {
-    var text = value;
-    var cursorOffset = value.length;
+export default function execute({ editor }: ChordContext, key: string, value: string): void {
+	const { text, cursorOffset } = parseTextChord(value);
 
-    [text, cursorOffset] = handleCursorTag(text, cursorOffset);
-
-    // Handle backslash last since they can be used to prevent other features
-    [text, cursorOffset] = handleEscapedBackslash(text, cursorOffset);
-
-    const cursor = editor.getCursor();
-
-    replaceKeyInput(editor, key, text);
-
-    editor.setCursor({
-        line: cursor.line,
-        ch: cursor.ch + cursorOffset - key.length,
-    });
+	const from = replaceKeyInput(editor, key, text);
+	setCursorAtOffset(editor, from, cursorOffset);
 }
 
 /**
- * Handles the cursor tag {c}, moves cursor to its position if present
- * @param text current replacement text
- * @param cursorOffset current cursor offset
- * @returns [updated text, new cursor offset]
+ * Resolves the tags in a text chord's value:
+ * - `{c}` marks where the cursor is placed (first occurrence only, later ones are removed)
+ * - `\{c}` inserts a literal `{c}`
+ * - `\\` inserts a literal `\`
+ * @param value text chord value
+ * @returns text to insert and the cursor offset from the start of that text
  */
-function handleCursorTag(text: string, cursorOffset: number): [string, number] {
-    var ctag = text.search(/\{c\}/);
-    if (ctag >= 0 &&
-        (ctag == 0 || text[ctag - 1] != "\\" || (ctag > 1 && text[ctag - 2] == "\\"))
-    ) {
-        cursorOffset += ctag - text.length;
-        text = text.slice(0, ctag) + text.slice(ctag + 3);
-    }
+export function parseTextChord(value: string): { text: string; cursorOffset: number } {
+	let text = "";
+	let cursorOffset: number | null = null;
+	let i = 0;
 
-    return [text, cursorOffset];
-}
+	while (i < value.length) {
+		if (value.startsWith("\\\\", i)) {
+			text += "\\";
+			i += 2;
+		} else if (value.startsWith("\\" + CURSOR_TAG, i)) {
+			text += CURSOR_TAG;
+			i += 1 + CURSOR_TAG.length;
+		} else if (value.startsWith(CURSOR_TAG, i)) {
+			cursorOffset ??= text.length;
+			i += CURSOR_TAG.length;
+		} else {
+			text += value[i];
+			i += 1;
+		}
+	}
 
-/**
- * Handles replacement tags like {s} for space
- * @param text current replacement text
- * @param replacements mapping of tags to their replacement value
- * @returns updated text
- */
-function replaceTags(text: string, replacements: { [tag: string]: string }): string {
-    for (const [tag, replace] of Object.entries(replacements)) {
-        text = text.replace(tag, replace);
-    }
-
-    return text;
-}
-
-/**
- * Replace double backslashes with single backslashes and updates the cursor offset
- * @param text current replacement text
- * @param cursorOffset current cursor offset
- * @returns [updated text, new cursor offset]
- */
-function handleEscapedBackslash(text: string, cursorOffset: number): [string, number] {
-    const count = (text.match(/\\\\/g) || []).length;
-    text = text.replace(/\\\\/g, "\\");
-    cursorOffset -= count;
-    return [text, cursorOffset];
+	return { text, cursorOffset: cursorOffset ?? text.length };
 }

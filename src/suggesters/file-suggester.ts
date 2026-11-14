@@ -1,33 +1,25 @@
-// Credits go to Liam's Periodic Notes Plugin: https://github.com/liamcain/obsidian-periodic-notes
-import { TAbstractFile, TFile } from "obsidian";
-import { TextInputSuggest } from "./suggest";
+import { AbstractInputSuggest, App, TFile } from "obsidian";
 
-export class FileSuggest extends TextInputSuggest<TFile> {
-    public getSuggestions(inputStr: string): TFile[] {
-        const abstractFiles = this.app.vault.getAllLoadedFiles();
-        const files: TFile[] = [];
-        const lowerCaseInputStr = inputStr.toLowerCase();
+/**
+ * Suggests Markdown file paths for a text input
+ */
+export class FileSuggest extends AbstractInputSuggest<TFile> {
+	public constructor(app: App, inputEl: HTMLInputElement) {
+		super(app, inputEl);
 
-        abstractFiles.forEach((file: TAbstractFile) => {
-            if (
-                file instanceof TFile &&
-                file.extension === "md" &&
-                file.path.toLowerCase().contains(lowerCaseInputStr)
-            ) {
-                files.push(file);
-            }
-        });
+		this.onSelect(file => {
+			this.setValue(file.path);
+			inputEl.trigger("input");
+			this.close();
+		});
+	}
 
-        return files;
-    }
+	protected getSuggestions(query: string): TFile[] {
+		const lowerCaseQuery = query.toLowerCase();
+		return this.app.vault.getMarkdownFiles().filter(f => f.path.toLowerCase().includes(lowerCaseQuery));
+	}
 
-    public renderSuggestion(file: TFile, el: HTMLElement): void {
-        el.setText(file.path);
-    }
-
-    public selectSuggestion(file: TFile): void {
-        this.inputEl.value = file.path;
-        this.inputEl.trigger("input");
-        this.close();
-    }
+	public renderSuggestion(file: TFile, el: HTMLElement): void {
+		el.setText(file.path);
+	}
 }

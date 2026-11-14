@@ -1,214 +1,204 @@
-import { Editor, Notice, TFile } from "obsidian";
-import "../utils/string.extensions";
-import TextChord from "./text-chord";
-import CommandChord from "./command-chord";
-import ChordsPlugin from "src/main";
-import TemplateChord from "./template-chord";
-import FileChord from "./file-chord";
+import { Editor, Notice } from "obsidian";
+import type ChordsPlugin from "../main";
+import type { ChordsPluginSettings } from "../settings/settings";
+import { ChordData, ChordExecutor, ChordType } from "./chord-types";
+import { normalizeKey } from "./chord-utils";
+import executeTextChord from "./text-chord";
+import executeCommandChord, { findCommandByName } from "./command-chord";
+import executeTemplateChord from "./template-chord";
+import executeFileChord from "./file-chord";
 
 /**
- * Represents the different types of chords
+ * Chord execution functions, one per ChordType
  */
-export enum ChordType { Text, Command, Template, File }
+const CHORD_EXECUTORS: Record<ChordType, ChordExecutor> = {
+	[ChordType.Text]: executeTextChord,
+	[ChordType.Command]: executeCommandChord,
+	[ChordType.Template]: executeTemplateChord,
+	[ChordType.File]: executeFileChord,
+};
 
 /**
- * The format in which chords are saved as
+ * Setting that controls whether a notice is shown after a chord of each type executes
  */
-export type ChordData = { key: string, value: string, chordType: ChordType };
+const NOTICE_SETTINGS: Record<ChordType, keyof ChordsPluginSettings> = {
+	[ChordType.Text]: "showTextChordExecuted",
+	[ChordType.Command]: "showCommandChordExecuted",
+	[ChordType.Template]: "showTemplateChordExecuted",
+	[ChordType.File]: "showFileChordExecuted",
+};
 
 /**
- * A mapping of user input to chord indexes (index of saved chords array) 
- */
-type ChordDictionary = { [input: string]: number };
-
-/**
- * Chord execution functions, should be a one-to-one mapping with ChordType
- */
-const ChordFunctions = {
-    [ChordType.Text]: TextChord,
-    [ChordType.Command]: CommandChord,
-    [ChordType.Template]: TemplateChord,
-    [ChordType.File]: FileChord,
-}
-
-/**
- * Responsible for mapping user input to chords and updating the settings.chords
- * TODO: Split into two classes, one for managing settings.chords the other for managing the mapping
+ * Responsible for mapping user input to chords and updating settings.chords
  */
 export default class ChordManager {
-    private readonly _plugin: ChordsPlugin;
+	private readonly plugin: ChordsPlugin;
 
-    private _chordDict: ChordDictionary;
+	/**
+	 * Maps normalized chord keys to their index in settings.chords
+	 */
+	private readonly chordIndexes = new Map<string, number>();
 
-    public constructor(plugin: ChordsPlugin) {
-        this._plugin = plugin;
-        this._chordDict = {};
+	public constructor(plugin: ChordsPlugin) {
+		this.plugin = plugin;
+		this.rebuildIndex();
+	}
 
-        this._plugin.Settings.chords.forEach((_, index) => {
-            this.enableChord(index);
-        });
-    }
+	private get chords(): ChordData[] {
+		return this.plugin.settings.chords;
+	}
 
-    /**
-     * Attempts to execute a chord based on user input
-     * @param input user input
-     * @param editor current editor
-     */
-    public handleChord(input: string, editor: Editor): void {
-        const chord = this.getChord(input);
+	/**
+	 * Attempts to execute a chord based on user input
+	 * @param input user input
+	 * @param editor current editor
+	 */
+	public async handleChord(input: string, editor: Editor): Promise<void> {
+		const chord = this.getChord(input);
+		if (!chord) return;
 
-        if (chord) {
-            ChordFunctions[chord.chordType](editor, chord.key, chord.value);
+		try {
+			await CHORD_EXECUTORS[chord.chordType]({ app: this.plugin.app, editor }, chord.key, chord.value);
+		} catch (error) {
+			console.error(`Chorded Hotkeys: failed to execute chord "${chord.key}"`, error);
+			new Notice(`Chord failed: ${chord.key}. See the developer console for details.`);
+			return;
+		}
 
-            if ((this._plugin.Settings.showTextChordExecuted && chord.chordType == ChordType.Text) ||
-                (this._plugin.Settings.showCommandChordExecuted && chord.chordType == ChordType.Command)) {
-                new Notice(`${ChordType[chord.chordType]} Chord Executed: ${chord.key}`);
-            }
-        }
-    }
+		if (this.plugin.settings[NOTICE_SETTINGS[chord.chordType]]) {
+			new Notice(`${ChordType[chord.chordType]} chord executed: ${chord.key}`);
+		}
+	}
 
-    /**
-     * Changes the key of a chord
-     * @param index index of chord in settings.chords
-     * @param newKey new key for the chord
-     */
-    public async updateChordKey(index: number, newKey: string): Promise<void> {
-        this.disableChord(index);
-        this._plugin.Settings.chords[index].key = newKey;
-        this.enableChord(index);
-        await this._plugin.saveSettings();
-    }
+	/**
+	 * Changes the key of a chord
+	 * @param index index of chord in settings.chords
+	 * @param newKey new key for the chord
+	 */
+	public async updateChordKey(index: number, newKey: string): Promise<void> {
+		const chord = this.chords[index];
+		if (!chord) return;
 
-    /**
-     * Changes the value of a chord
-     * @param index index of chord in settings.chords
-     * @param newValue new value for chord
-     */
-    public async updateChordValue(index: number, newValue: string): Promise<void> {
-        this._plugin.Settings.chords[index].value = newValue;
-        await this._plugin.saveSettings();
-    }
+		chord.key = newKey;
+		this.rebuildIndex();
+		await this.plugin.saveSettings();
+	}
 
-    /**
-     * Changes the type of a chord
-     * @param index index of chord in settings.chords
-     * @param newChordType new ChordType for the chord
-     */
-    public async updateChordType(index: number, newChordType: ChordType): Promise<void> {
-        this._plugin.Settings.chords[index].chordType = newChordType;
-        await this._plugin.saveSettings();
-    }
+	/**
+	 * Changes the value of a chord
+	 * @param index index of chord in settings.chords
+	 * @param newValue new value for chord
+	 */
+	public async updateChordValue(index: number, newValue: string): Promise<void> {
+		const chord = this.chords[index];
+		if (!chord) return;
 
-    /**
-     * Deletes a chord
-     * @param index index of chord in settings.chords
-     */
-    public async removeChord(index: number): Promise<void> {
-        this.disableChord(index);
-        this._plugin.Settings.chords.splice(index, 1);
-        await this._plugin.saveSettings();
-    }
+		chord.value = newValue;
+		await this.plugin.saveSettings();
+	}
 
-    /**
-     * Creates an empty text chord
-     */
-    public async addBlankChord(): Promise<void> {
-        const newChord = { key: "", value: "", chordType: ChordType.Text };
-        const count = this._plugin.Settings.chords.push(newChord);
-        this.enableChord(count - 1);
-        await this._plugin.saveSettings();
-    }
+	/**
+	 * Changes the type of a chord
+	 * @param index index of chord in settings.chords
+	 * @param newChordType new ChordType for the chord
+	 */
+	public async updateChordType(index: number, newChordType: ChordType): Promise<void> {
+		const chord = this.chords[index];
+		if (!chord) return;
 
-    /**
-     * Swaps the indexes (position in settings.chords) of two chords
-     * Used to change display order
-     * @param index1 index of first chord
-     * @param index2 index of second chord
-     */
-    public async swapIndex(index1: number, index2: number): Promise<void> {
-        const fromKey = this._plugin.Settings.chords[index1].key.sort();
-        const toKey = this._plugin.Settings.chords[index2].key.sort();
+		chord.chordType = newChordType;
+		await this.plugin.saveSettings();
+	}
 
-        if (this._chordDict[fromKey as keyof ChordDictionary] == index1) {
-            this._chordDict[fromKey as keyof ChordDictionary] = index2;
-        }
+	/**
+	 * Deletes a chord
+	 * @param index index of chord in settings.chords
+	 */
+	public async removeChord(index: number): Promise<void> {
+		this.chords.splice(index, 1);
+		this.rebuildIndex();
+		await this.plugin.saveSettings();
+	}
 
-        if (this._chordDict[toKey as keyof ChordDictionary] == index2) {
-            this._chordDict[toKey as keyof ChordDictionary] = index1;
-        }
+	/**
+	 * Creates an empty text chord
+	 */
+	public async addBlankChord(): Promise<void> {
+		this.chords.push({ key: "", value: "", chordType: ChordType.Text });
+		this.rebuildIndex();
+		await this.plugin.saveSettings();
+	}
 
-        const element = this._plugin.Settings.chords[index1];
-        this._plugin.Settings.chords[index1] = this._plugin.Settings.chords[index2];
-        this._plugin.Settings.chords[index2] = element;
+	/**
+	 * Swaps the position of two chords in settings.chords, used to change display order
+	 * @param index1 index of first chord
+	 * @param index2 index of second chord
+	 */
+	public async swapIndex(index1: number, index2: number): Promise<void> {
+		const chord1 = this.chords[index1];
+		const chord2 = this.chords[index2];
+		if (!chord1 || !chord2) return;
 
-        await this._plugin.saveSettings();
-    }
+		this.chords[index1] = chord2;
+		this.chords[index2] = chord1;
+		this.rebuildIndex();
+		await this.plugin.saveSettings();
+	}
 
-    /**
-     * Checks if a key is a duplicate (both duplicates will return true)
-     * @param index index of chord in settings.chords
-     * @return if there are more than one copy of the key 
-     */
-    public isDuplicateKey(index: number): boolean {
-        const key = this._plugin.Settings.chords[index].key.sort();
-        return this._plugin.Settings.chords.findIndex((c, i) => c.key.sort() == key && i != index) >= 0;
-    }
+	/**
+	 * Checks if a chord's key is shared with another chord (both duplicates will return true)
+	 * @param index index of chord in settings.chords
+	 * @returns if more than one chord has the same key
+	 */
+	public isDuplicateKey(index: number): boolean {
+		const chord = this.chords[index];
+		if (!chord) return false;
 
-    public hasValidValue(index: number): boolean {
-        var chord = this._plugin.Settings.chords[index];
-        switch (chord.chordType) {
-            case ChordType.Command:
-                return app.commands.listCommands().find(c => c.name == chord.value);;
-            case ChordType.File:
-            case ChordType.Template:
-                return app.vault.getAbstractFileByPath(chord.value) instanceof TFile;
-            case ChordType.Text:
-                return true;
-        }
+		const key = normalizeKey(chord.key);
+		return this.chords.some((c, i) => i !== index && normalizeKey(c.key) === key);
+	}
 
-        throw new Error("Unhandled chord type");
-    }
+	/**
+	 * Checks if a chord's value refers to something that exists
+	 * @param index index of chord in settings.chords
+	 * @returns if the value is valid for the chord's type
+	 */
+	public hasValidValue(index: number): boolean {
+		const chord = this.chords[index];
+		if (!chord) return false;
 
-    /**
-     * Enables a chord so it can be used
-     * Required to set up hashing for keys to chords
-     * @param index index of chord in settings.chords
-     */
-    private enableChord(index: number): void {
-        const newKey = this._plugin.Settings.chords[index].key.sort();
-        if (newKey in this._chordDict) {
-            return;
-        }
+		switch (chord.chordType) {
+			case ChordType.Command:
+				return findCommandByName(this.plugin.app, chord.value) !== undefined;
+			case ChordType.File:
+			case ChordType.Template:
+				return this.plugin.app.vault.getFileByPath(chord.value) !== null;
+			case ChordType.Text:
+				return true;
+		}
+	}
 
-        this._chordDict[newKey] = index;
-    }
+	/**
+	 * Rebuilds the key -> chord mapping. When keys are duplicated, the first chord wins.
+	 */
+	private rebuildIndex(): void {
+		this.chordIndexes.clear();
 
-    /**
-     * Disables a chord so it can't be used
-     * @param index index of chord in settings.chords
-     */
-    private disableChord(index: number): void {
-        const key = this._plugin.Settings.chords[index].key.sort();
+		this.chords.forEach((chord, index) => {
+			const key = normalizeKey(chord.key);
+			if (key && !this.chordIndexes.has(key)) {
+				this.chordIndexes.set(key, index);
+			}
+		});
+	}
 
-        if (this._chordDict[key as keyof ChordDictionary] == index) {
-            delete this._chordDict[key as keyof ChordDictionary];
-
-            // If the chord being disabled had any duplicates, enable one of them since the slot is now available
-            const duplicateKey = this._plugin.Settings.chords.findIndex((c, i) => c.key.sort() == key && i != index);
-            if (duplicateKey >= 0) {
-                this.enableChord(duplicateKey);
-            }
-        }
-    }
-
-    /**
-     * Gets a chord from user input
-     * @param key user input
-     * @returns chord if found
-     */
-    private getChord(key: string): ChordData | undefined {
-        key = key.sort();
-        const chordIndex = this._chordDict[key as keyof ChordDictionary];
-        return this._plugin.Settings.chords[chordIndex];
-    }
+	/**
+	 * Gets a chord from user input
+	 * @param input user input
+	 * @returns chord if found
+	 */
+	private getChord(input: string): ChordData | undefined {
+		const index = this.chordIndexes.get(normalizeKey(input));
+		return index === undefined ? undefined : this.chords[index];
+	}
 }

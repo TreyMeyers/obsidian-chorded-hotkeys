@@ -1,27 +1,23 @@
-import { Editor, Notice, TFile } from "obsidian";
-import { replaceKeyInput } from "./chord-utils";
+import { Notice, normalizePath } from "obsidian";
+import type { ChordContext } from "./chord-types";
+import { insertAt, replaceKeyInput } from "./chord-utils";
 
 /**
- * Removes user input and pastes the content of a file
- * @param editor editor for active file
+ * Removes the user input and pastes the content of a file
+ * @param context chord context
  * @param key user input to trigger the chord
  * @param path file path
  */
-export default async function execute(editor: Editor, key: string, path: string): Promise<void> {
-    replaceKeyInput(editor, key);
+export default async function execute({ app, editor }: ChordContext, key: string, path: string): Promise<void> {
+	// Remove the input synchronously so it's gone before the user types anything else
+	const from = replaceKeyInput(editor, key);
 
-    const file = app.vault.getAbstractFileByPath(path);
-    if (file instanceof TFile) {
-        const content = await app.vault.read(file);
-        replaceKeyInput(editor, "", content);
+	const file = app.vault.getFileByPath(normalizePath(path));
+	if (!file) {
+		new Notice(`File not found for chord: ${path}`);
+		return;
+	}
 
-        const cursor = editor.getCursor();
-        editor.setCursor({
-            line: cursor.line,
-            ch: cursor.ch + content.length,
-        });
-    }
-    else {
-        new Notice(`File not found for chord: ${path}`);
-    }
+	const content = await app.vault.cachedRead(file);
+	insertAt(editor, from, content);
 }
