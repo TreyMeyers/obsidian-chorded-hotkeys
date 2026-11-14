@@ -1,15 +1,14 @@
 import { App, Command, Notice } from "obsidian";
 import type { ChordContext } from "./chord-types";
-import { replaceKeyInput } from "./chord-utils";
 
 /**
  * Removes the user input and executes a command
  * @param context chord context
- * @param key user input to trigger the chord
+ * @param input user input that triggered the chord
  * @param value command name
  */
-export default function execute({ app, editor }: ChordContext, key: string, value: string): void {
-	replaceKeyInput(editor, key);
+export default function execute({ app, target }: ChordContext, input: string, value: string): void {
+	target.replaceInput(input);
 
 	const command = findCommandByName(app, value);
 	if (!command) {

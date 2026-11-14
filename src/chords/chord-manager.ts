@@ -1,4 +1,5 @@
-import { Editor, Notice } from "obsidian";
+import { Notice } from "obsidian";
+import type { TextTarget } from "../targets/text-target";
 import type ChordsPlugin from "../main";
 import type { ChordsPluginSettings } from "../settings/settings";
 import { ChordData, ChordExecutor, ChordType } from "./chord-types";
@@ -51,14 +52,17 @@ export default class ChordManager {
 	/**
 	 * Attempts to execute a chord based on user input
 	 * @param input user input
-	 * @param editor current editor
+	 * @param target where the input was typed
 	 */
-	public async handleChord(input: string, editor: Editor): Promise<void> {
+	public async handleChord(input: string, target: TextTarget): Promise<void> {
 		const chord = this.getChord(input);
 		if (!chord) return;
 
+		// Don't remove text unless it's exactly what the user typed, e.g. a key event may not have inserted anything
+		if (!target.hasInputBeforeCursor(input)) return;
+
 		try {
-			await CHORD_EXECUTORS[chord.chordType]({ app: this.plugin.app, editor }, chord.key, chord.value);
+			await CHORD_EXECUTORS[chord.chordType]({ app: this.plugin.app, target }, input, chord.value);
 		} catch (error) {
 			console.error(`Chorded Hotkeys: failed to execute chord "${chord.key}"`, error);
 			new Notice(`Chord failed: ${chord.key}. See the developer console for details.`);

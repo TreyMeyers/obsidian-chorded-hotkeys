@@ -3,6 +3,7 @@ import type ChordsPlugin from "../main";
 import { ChordType } from "../chords/chord-types";
 import { CommandSuggest } from "../suggesters/command-suggester";
 import { FileSuggest } from "../suggesters/file-suggester";
+import { NO_CHORDS_CLASS } from "../targets/text-target";
 import { ChordsPluginSettings, delayToWpm, parsePositiveNumber, wpmToDelay } from "./settings";
 
 type NoticeSettingKey =
@@ -41,6 +42,18 @@ export default class ChordsSettingTab extends PluginSettingTab {
 
 	public display(): void {
 		this.containerEl.empty();
+		// Typing a chord's trigger while editing it shouldn't run the chord
+		this.containerEl.addClass(NO_CHORDS_CLASS);
+
+		new Setting(this.containerEl)
+			.setName("Use chords outside the editor")
+			.setDesc("Also trigger chords in other text fields, such as search, the command palette, note titles, and properties.")
+			.addToggle(toggle => toggle
+				.setValue(this.settings.enableOutsideEditor)
+				.onChange(async value => {
+					this.settings.enableOutsideEditor = value;
+					await this.plugin.saveSettings();
+				}));
 
 		new Setting(this.containerEl).setName("Notices").setHeading();
 		this.addNoticeToggle("Text", "Show a notice when a text chord is executed", "showTextChordExecuted");

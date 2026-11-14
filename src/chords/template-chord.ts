@@ -1,6 +1,6 @@
 import { Notice, TFile, normalizePath } from "obsidian";
 import type { ChordContext } from "./chord-types";
-import { insertAt, replaceKeyInput } from "./chord-utils";
+import { resolveCursorMarkers } from "./templater-cursor";
 
 export const TEMPLATER_ID = "templater-obsidian";
 
@@ -27,12 +27,12 @@ interface TemplaterPlugin {
 /**
  * Removes the user input and pastes the content of a template, evaluated by Templater
  * @param context chord context
- * @param key user input to trigger the chord
+ * @param input user input that triggered the chord
  * @param path template file path
  */
-export default async function execute({ app, editor }: ChordContext, key: string, path: string): Promise<void> {
+export default async function execute({ app, target }: ChordContext, input: string, path: string): Promise<void> {
 	// Remove the input synchronously so it's gone before the user types anything else
-	const from = replaceKeyInput(editor, key);
+	const insertionPoint = target.replaceInput(input);
 
 	const templaterPlugin = app.plugins.plugins[TEMPLATER_ID] as TemplaterPlugin | undefined;
 	const templater = templaterPlugin?.templater;
@@ -62,10 +62,16 @@ export default async function execute({ app, editor }: ChordContext, key: string
 	const template = await app.vault.cachedRead(templateFile);
 	const content = await templater.parse_template(config, template);
 
-	insertAt(editor, from, content);
+	if (target.editor) {
+		insertionPoint.insert(content);
 
-	// Let Templater move the cursor to any tp.file.cursor() markers, the same way it does for its own commands
-	if (templaterPlugin.settings?.auto_jump_to_cursor) {
-		await templaterPlugin.editor_handler?.cursor_jumper?.jump_to_next_cursor_location?.();
+		// Let Templater move the cursor to any tp.file.cursor() markers, the same way it does for its own commands
+		if (templaterPlugin.settings?.auto_jump_to_cursor) {
+			await templaterPlugin.editor_handler?.cursor_jumper?.jump_to_next_cursor_location?.();
+		}
+	} else {
+		// Templater can only jump to cursor markers in an editor, so resolve them here
+		const { text, cursorOffset } = resolveCursorMarkers(content);
+		insertionPoint.insert(text, cursorOffset);
 	}
 }

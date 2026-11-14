@@ -2,6 +2,7 @@ import type { ChordData } from "../chords/chord-types";
 
 /**
  * @member delay maximum duration (ms) between keys to be considered part of the chord. Delay needs to be less than the user's inter-character typing delay
+ * @member enableOutsideEditor if chords also work in text fields outside the Markdown editor (search, inputs, titles, ...)
  * @member setDelayManually if the delay is entered manually (true) or calculated from the user's WPM (false)
  * @member showTextChordExecuted if we should display a notice when a text chord is executed
  * @member showTemplateChordExecuted if we should display a notice when a template chord is executed
@@ -11,6 +12,7 @@ import type { ChordData } from "../chords/chord-types";
  */
 export interface ChordsPluginSettings {
 	delay: number;
+	enableOutsideEditor: boolean;
 	setDelayManually: boolean;
 	showTextChordExecuted: boolean;
 	showTemplateChordExecuted: boolean;
@@ -42,6 +44,7 @@ const DELAY_WPM_PRODUCT = 3_333;
 
 export const DEFAULT_SETTINGS: Readonly<ChordsPluginSettings> = {
 	delay: wpmToDelay(80),
+	enableOutsideEditor: true,
 	setDelayManually: false,
 	showTextChordExecuted: false,
 	showTemplateChordExecuted: false,

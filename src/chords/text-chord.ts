@@ -1,19 +1,16 @@
 import type { ChordContext } from "./chord-types";
-import { replaceKeyInput, setCursorAtOffset } from "./chord-utils";
 
 const CURSOR_TAG = "{c}";
 
 /**
  * Replaces the user input with the chord's text
  * @param context chord context
- * @param key user input to trigger the chord
+ * @param input user input that triggered the chord
  * @param value text to insert, may contain tags
  */
-export default function execute({ editor }: ChordContext, key: string, value: string): void {
+export default function execute({ target }: ChordContext, input: string, value: string): void {
 	const { text, cursorOffset } = parseTextChord(value);
-
-	const from = replaceKeyInput(editor, key, text);
-	setCursorAtOffset(editor, from, cursorOffset);
+	target.replaceInput(input, text, cursorOffset);
 }
 
 /**

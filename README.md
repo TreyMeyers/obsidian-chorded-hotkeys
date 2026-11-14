@@ -26,6 +26,13 @@ The current chord types are:
 
 *Remark*: Since the order of key-presses doesn't matter, the chord-triggers of 'hew', 'hwe', 'ehw', etc. are all considered duplicates. Each chord must have a unique trigger.
 
+## Where Chords Work
+Chords work in notes in every Obsidian window, including popout windows.
+
+By default they also work in other text fields, such as search, the command palette, note titles, and properties. Turn off *Use chords outside the editor* in the settings to limit chords to notes. Chords never trigger in password fields or in the Chorded Hotkeys settings.
+
+Outside the editor, template chords still need an open note for Templater, and the cursor is placed at the first `tp.file.cursor()` marker.
+
 ## Tags 
 A tag is a special element added to a chord to augment its effect.
 Currently there is only one tag, the cursor tag. Adding '{c}' in the value field of a text chord will move the cursor to that position upon activation.
@@ -37,7 +44,6 @@ https://user-images.githubusercontent.com/14039575/199102931-e87a107d-202f-42e9-
 
 ## Roadmap 
 - Add the ability to have multiple chord dictionaries and switch between them.
-- Trigger chords from any context, not just editor.
 
 # Compare with similar plugins
 

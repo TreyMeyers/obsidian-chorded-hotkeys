@@ -1,4 +1,5 @@
-import type { App, Editor } from "obsidian";
+import type { App } from "obsidian";
+import type { TextTarget } from "../targets/text-target";
 
 /**
  * The different types of chords.
@@ -25,10 +26,13 @@ export interface ChordData {
  */
 export interface ChordContext {
 	app: App;
-	editor: Editor;
+	target: TextTarget;
 }
 
 /**
- * Executes a chord whose trigger `key` was just typed before the cursor
+ * Executes a chord
+ * @param context chord context
+ * @param input text the user typed to trigger the chord, directly before the cursor
+ * @param value the chord's value
  */
-export type ChordExecutor = (context: ChordContext, key: string, value: string) => void | Promise<void>;
+export type ChordExecutor = (context: ChordContext, input: string, value: string) => void | Promise<void>;

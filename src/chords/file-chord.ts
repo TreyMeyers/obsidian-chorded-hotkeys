@@ -1,16 +1,15 @@
 import { Notice, normalizePath } from "obsidian";
 import type { ChordContext } from "./chord-types";
-import { insertAt, replaceKeyInput } from "./chord-utils";
 
 /**
  * Removes the user input and pastes the content of a file
  * @param context chord context
- * @param key user input to trigger the chord
+ * @param input user input that triggered the chord
  * @param path file path
  */
-export default async function execute({ app, editor }: ChordContext, key: string, path: string): Promise<void> {
+export default async function execute({ app, target }: ChordContext, input: string, path: string): Promise<void> {
 	// Remove the input synchronously so it's gone before the user types anything else
-	const from = replaceKeyInput(editor, key);
+	const insertionPoint = target.replaceInput(input);
 
 	const file = app.vault.getFileByPath(normalizePath(path));
 	if (!file) {
@@ -19,5 +18,5 @@ export default async function execute({ app, editor }: ChordContext, key: string
 	}
 
 	const content = await app.vault.cachedRead(file);
-	insertAt(editor, from, content);
+	insertionPoint.insert(content);
 }
