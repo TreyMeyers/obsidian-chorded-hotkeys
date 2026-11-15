@@ -1,10 +1,10 @@
 {
-    "id": "obsidian-chorded-hotkeys",
-    "name": "Chorded Hotkeys",
-    "version": "1.1.0",
-    "minAppVersion": "1.5.7",
-    "description": "Type multiple letters at the same time to trigger text insertion, template insertion, or command execution.",
-    "author": "Trey Connor Meyers",
-    "authorUrl": "https://www.linkedin.com/in/tconnormeyers/",
-    "isDesktopOnly": true
+	"id": "obsidian-chorded-hotkeys",
+	"name": "Chorded Hotkeys",
+	"version": "2.0.0",
+	"minAppVersion": "1.5.7",
+	"description": "Type multiple letters at the same time to trigger text insertion, template insertion, or command execution.",
+	"author": "Trey Connor Meyers",
+	"authorUrl": "https://www.linkedin.com/in/tconnormeyers/",
+	"isDesktopOnly": true
 }
