@@ -2,8 +2,8 @@ import { Notice } from "obsidian";
 import type { TextTarget } from "../targets/text-target";
 import type ChordsPlugin from "../main";
 import type { ChordsPluginSettings } from "../settings/settings";
-import { ChordData, ChordExecutor, ChordType } from "./chord-types";
-import { isChordActive, moveItem, normalizeKey } from "./chord-utils";
+import { ChordData, ChordExecutor, ChordGroup, ChordType } from "./chord-types";
+import { createGroupId, groupDisplayName, isChordActive, moveItem, normalizeKey } from "./chord-utils";
 import executeTextChord from "./text-chord";
 import executeCommandChord, { findCommandByName } from "./command-chord";
 import executeTemplateChord from "./template-chord";
@@ -29,8 +29,10 @@ const NOTICE_SETTINGS: Record<ChordType, keyof ChordsPluginSettings> = {
 	[ChordType.File]: "showFileChordExecuted",
 };
 
+const GROUP_COMMAND_PREFIX = "toggle-group-";
+
 /**
- * Responsible for mapping user input to chords and updating settings.chords
+ * Responsible for mapping user input to chords and updating settings.chords and settings.groups
  */
 export default class ChordManager {
 	private readonly plugin: ChordsPlugin;
@@ -40,6 +42,16 @@ export default class ChordManager {
 	 */
 	private readonly chordIndexes = new Map<string, number>();
 
+	/**
+	 * Ids of the groups that currently have a toggle command
+	 */
+	private readonly groupCommands = new Set<string>();
+
+	/**
+	 * Called when a group is toggled from outside the settings tab (by its command), so an open tab can update
+	 */
+	public onGroupToggled: (() => void) | null = null;
+
 	public constructor(plugin: ChordsPlugin) {
 		this.plugin = plugin;
 		this.rebuildIndex();
@@ -47,6 +59,10 @@ export default class ChordManager {
 
 	private get chords(): ChordData[] {
 		return this.plugin.settings.chords;
+	}
+
+	private get groups(): ChordGroup[] {
+		return this.plugin.settings.groups;
 	}
 
 	/**
@@ -131,11 +147,25 @@ export default class ChordManager {
 	/**
 	 * Checks if a chord can currently be triggered
 	 * @param index index of chord in settings.chords
-	 * @returns false if the chord is turned off
+	 * @returns false if the chord or its group is turned off
 	 */
 	public isActive(index: number): boolean {
 		const chord = this.chords[index];
-		return chord !== undefined && isChordActive(chord);
+		return chord !== undefined && isChordActive(chord, this.groups);
+	}
+
+	/**
+	 * Moves a chord into a group
+	 * @param index index of chord in settings.chords
+	 * @param groupId id of the group, or null to make the chord ungrouped
+	 */
+	public async setChordGroup(index: number, groupId: string | null): Promise<void> {
+		const chord = this.chords[index];
+		if (!chord) return;
+
+		assignGroup(chord, groupId);
+		this.rebuildIndex();
+		await this.plugin.saveSettings();
 	}
 
 	/**
@@ -150,9 +180,12 @@ export default class ChordManager {
 
 	/**
 	 * Creates an empty text chord at the top of the list
+	 * @param groupId id of the group to add the chord to, or null for an ungrouped chord
 	 */
-	public async addBlankChord(): Promise<void> {
-		this.chords.unshift({ key: "", value: "", chordType: ChordType.Text });
+	public async addBlankChord(groupId: string | null = null): Promise<void> {
+		const chord: ChordData = { key: "", value: "", chordType: ChordType.Text };
+		assignGroup(chord, groupId);
+		this.chords.unshift(chord);
 		this.rebuildIndex();
 		await this.plugin.saveSettings();
 	}
@@ -161,25 +194,163 @@ export default class ChordManager {
 	 * Moves a chord to a new position in settings.chords, used to change display order
 	 * @param from index of the chord
 	 * @param to index the chord should end up at
+	 * @param groupId id of the group the chord should end up in, null for ungrouped, leave out to keep its group
 	 */
-	public async moveChord(from: number, to: number): Promise<void> {
+	public async moveChord(from: number, to: number, groupId?: string | null): Promise<void> {
+		const chord = this.chords[from];
+		if (chord && groupId !== undefined) {
+			assignGroup(chord, groupId);
+		}
+
 		moveItem(this.chords, from, to);
 		this.rebuildIndex();
 		await this.plugin.saveSettings();
 	}
 
 	/**
+	 * Creates an empty, enabled group at the end of the group list
+	 * @returns the new group
+	 */
+	public async addGroup(): Promise<ChordGroup> {
+		const group: ChordGroup = { id: createGroupId(this.groups), name: "", enabled: true };
+		this.groups.push(group);
+		this.syncGroupCommands();
+		await this.plugin.saveSettings();
+		return group;
+	}
+
+	/**
+	 * Changes a group's name, and with it the name of its toggle command
+	 * @param id id of the group
+	 * @param name new name
+	 */
+	public async renameGroup(id: string, name: string): Promise<void> {
+		const group = this.getGroup(id);
+		if (!group) return;
+
+		group.name = name;
+		this.syncGroupCommands();
+		await this.plugin.saveSettings();
+	}
+
+	/**
+	 * Turns all chords of a group on or off; chords that are turned off individually stay off
+	 * @param id id of the group
+	 * @param enabled if the group's chords can be triggered
+	 */
+	public async setGroupEnabled(id: string, enabled: boolean): Promise<void> {
+		const group = this.getGroup(id);
+		if (!group) return;
+
+		group.enabled = enabled;
+		this.rebuildIndex();
+		await this.plugin.saveSettings();
+	}
+
+	/**
+	 * Shows or hides a group's chords in the settings
+	 * @param id id of the group
+	 * @param collapsed if the chords are hidden
+	 */
+	public async setGroupCollapsed(id: string, collapsed: boolean): Promise<void> {
+		const group = this.getGroup(id);
+		if (!group) return;
+
+		group.collapsed = collapsed;
+		await this.plugin.saveSettings();
+	}
+
+	/**
+	 * Moves a group to a new position in settings.groups, used to change display order
+	 * @param from index of the group
+	 * @param to index the group should end up at
+	 */
+	public async moveGroup(from: number, to: number): Promise<void> {
+		moveItem(this.groups, from, to);
+		await this.plugin.saveSettings();
+	}
+
+	/**
+	 * Deletes a group. Its chords are kept and become ungrouped.
+	 * @param id id of the group
+	 */
+	public async removeGroup(id: string): Promise<void> {
+		const index = this.groups.findIndex(group => group.id === id);
+		if (index === -1) return;
+
+		this.groups.splice(index, 1);
+		this.chords.forEach(chord => {
+			if (chord.groupId === id) delete chord.groupId;
+		});
+		this.rebuildIndex();
+		this.syncGroupCommands();
+		await this.plugin.saveSettings();
+	}
+
+	/**
+	 * Makes the registered "Toggle group" commands match the groups and the groupToggleCommands setting.
+	 * Command ids are derived from group ids, so hotkeys survive renaming a group.
+	 */
+	public syncGroupCommands(): void {
+		const wanted = this.plugin.settings.groupToggleCommands ? this.groups : [];
+
+		this.groupCommands.forEach(id => {
+			if (!wanted.some(group => group.id === id)) {
+				this.removeCommand(GROUP_COMMAND_PREFIX + id);
+				this.groupCommands.delete(id);
+			}
+		});
+
+		wanted.forEach(group => {
+			// Adding a command that already exists replaces it, which is how a rename reaches the command palette
+			this.plugin.addCommand({
+				id: GROUP_COMMAND_PREFIX + group.id,
+				name: `Toggle group: ${groupDisplayName(group)}`,
+				callback: () => void this.toggleGroup(group.id),
+			});
+			this.groupCommands.add(group.id);
+		});
+	}
+
+	/**
+	 * Flips a group on or off and tells the user, used by the group's command
+	 */
+	private async toggleGroup(id: string): Promise<void> {
+		const group = this.getGroup(id);
+		if (!group) return;
+
+		await this.setGroupEnabled(id, !group.enabled);
+		new Notice(`Chord group ${group.enabled ? "enabled" : "disabled"}: ${groupDisplayName(group)}`);
+		this.onGroupToggled?.();
+	}
+
+	private getGroup(id: string): ChordGroup | undefined {
+		return this.groups.find(group => group.id === id);
+	}
+
+	private removeCommand(id: string): void {
+		// Plugin.removeCommand only exists since Obsidian 1.7.2, older versions need the internal command registry
+		const removeCommand = (this.plugin as { removeCommand?: (commandId: string) => void }).removeCommand;
+		if (removeCommand) {
+			removeCommand.call(this.plugin, id);
+		} else {
+			this.plugin.app.commands.removeCommand(`${this.plugin.manifest.id}:${id}`);
+		}
+	}
+
+	/**
 	 * Checks if a chord's key is shared with another chord (both duplicates will return true).
-	 * Chords that are turned off don't conflict with anything, so alternatives can share a key.
+	 * Chords that are turned off (individually or through their group) don't conflict with anything,
+	 * so alternatives can share a key.
 	 * @param index index of chord in settings.chords
 	 * @returns if more than one active chord has the same key
 	 */
 	public isDuplicateKey(index: number): boolean {
 		const chord = this.chords[index];
-		if (!chord || !isChordActive(chord)) return false;
+		if (!chord || !isChordActive(chord, this.groups)) return false;
 
 		const key = normalizeKey(chord.key);
-		return this.chords.some((c, i) => i !== index && isChordActive(c) && normalizeKey(c.key) === key);
+		return this.chords.some((c, i) => i !== index && isChordActive(c, this.groups) && normalizeKey(c.key) === key);
 	}
 
 	/**
@@ -203,7 +374,7 @@ export default class ChordManager {
 	}
 
 	/**
-	 * Rebuilds the key -> chord mapping, leaving out chords that are turned off.
+	 * Rebuilds the key -> chord mapping, leaving out chords that are turned off or in a group that is.
 	 * When keys are duplicated, the first chord wins.
 	 */
 	private rebuildIndex(): void {
@@ -211,7 +382,7 @@ export default class ChordManager {
 
 		this.chords.forEach((chord, index) => {
 			const key = normalizeKey(chord.key);
-			if (key && isChordActive(chord) && !this.chordIndexes.has(key)) {
+			if (key && isChordActive(chord, this.groups) && !this.chordIndexes.has(key)) {
 				this.chordIndexes.set(key, index);
 			}
 		});
@@ -225,5 +396,16 @@ export default class ChordManager {
 	private getChord(input: string): ChordData | undefined {
 		const index = this.chordIndexes.get(normalizeKey(input));
 		return index === undefined ? undefined : this.chords[index];
+	}
+}
+
+/**
+ * Puts a chord in a group, or makes it ungrouped
+ */
+function assignGroup(chord: ChordData, groupId: string | null): void {
+	if (groupId === null) {
+		delete chord.groupId;
+	} else {
+		chord.groupId = groupId;
 	}
 }

@@ -36,6 +36,16 @@ Outside the editor, template chords still need an open note for Templater, and t
 ## Turning Chords Off
 Each chord has a toggle in the settings. A chord that's turned off is kept, but can't be triggered until you turn it back on. Chords that are turned off don't count as duplicates, so several alternatives can share a trigger as long as only one is on.
 
+## Chord Groups
+Groups organize your chords and let you turn a whole set on or off at once.
+
+- Click 'Add group' in the settings and give the group a name. Use the group's **+** button to add a chord to it, drag a chord onto a group, or use a chord's folder button to move it to another group.
+- A group's toggle turns all of its chords on or off. Chords that are turned off individually stay off when their group is on.
+- Groups can be collapsed to keep the list short, and deleting a group keeps its chords (they become ungrouped).
+- Turn on *Commands to toggle chord groups* to get a 'Toggle group' command for every group, which you can run from the command palette or bind to a hotkey. A notice shows whether the group was enabled or disabled.
+
+Since chords in a disabled group don't count as duplicates, groups can work as dictionaries: use the same triggers in several groups and switch between them.
+
 ## Tags 
 A tag is a special element added to a chord to augment its effect.
 Currently there is only one tag, the cursor tag. Adding '{c}' in the value field of a text chord will move the cursor to that position upon activation.
@@ -44,9 +54,6 @@ To insert a literal `{c}`, escape it as `\{c}`. To insert a literal backslash, u
 
 ## Demo
 https://user-images.githubusercontent.com/14039575/199102931-e87a107d-202f-42e9-8247-10f9b4d6f397.mp4
-
-## Roadmap 
-- Add the ability to have multiple chord dictionaries and switch between them.
 
 # Compare with similar plugins
 

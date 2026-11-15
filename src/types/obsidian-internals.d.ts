@@ -10,6 +10,7 @@ declare module "obsidian" {
 		commands: {
 			listCommands(): Command[];
 			executeCommandById(id: string): boolean;
+			removeCommand(id: string): void;
 		};
 		plugins: {
 			plugins: Record<string, Plugin | undefined>;

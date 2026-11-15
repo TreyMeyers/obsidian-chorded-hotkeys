@@ -14,7 +14,70 @@
 .chords-list {
 	display: flex;
 	flex-direction: column;
+	gap: var(--size-4-4);
+}
+
+/* The chords of one group, or the ungrouped chords */
+.chords-section {
+	display: flex;
+	flex-direction: column;
 	gap: var(--size-4-2);
+}
+
+.chords-group {
+	padding: var(--size-4-2);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-secondary);
+}
+
+.chords-group.is-new {
+	animation: chords-row-added 600ms ease-out;
+}
+
+/* Group header: collapse | name | count | actions */
+.chords-group-header {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	border-radius: var(--radius-s);
+}
+
+.chords-group-header input.chords-group-name {
+	flex: 1 1 8em;
+	min-width: 0;
+	font-weight: var(--font-semibold);
+}
+
+.chords-group.is-disabled input.chords-group-name {
+	color: var(--text-muted);
+}
+
+.chords-group-count,
+.chords-ungrouped-header,
+.chords-group-empty {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.chords-group-count {
+	white-space: nowrap;
+}
+
+.chords-ungrouped-header {
+	padding: var(--size-2-1) var(--size-2-2);
+	border-radius: var(--radius-s);
+	font-weight: var(--font-semibold);
+}
+
+.chords-group-empty {
+	padding: var(--size-4-2);
+	text-align: center;
+}
+
+/* A dragged chord is over a section's header and would join that section */
+.chords-drop-into {
+	box-shadow: 0 0 0 2px var(--interactive-accent);
 }
 
 .chords-empty {
@@ -136,6 +199,20 @@ body:not(.is-mobile) .chords-row-move,
 
 .is-phone .chords-row-fields .chords-value {
 	flex-basis: 100%;
+}
+
+.is-phone .chords-toolbar,
+.is-phone .chords-group-header {
+	flex-wrap: wrap;
+}
+
+.is-phone .chords-toolbar .search-input-container,
+.is-phone .chords-group-header input.chords-group-name {
+	flex-basis: 100%;
+}
+
+.is-phone .chords-group-header .chords-row-actions {
+	margin-left: auto;
 }
 
 input.chords-error,

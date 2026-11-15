@@ -5,7 +5,7 @@ import ChordManager from "./chords/chord-manager";
 import { getTextTarget } from "./targets/get-text-target";
 
 export default class ChordsPlugin extends Plugin {
-	public settings: ChordsPluginSettings = { ...DEFAULT_SETTINGS, chords: [] };
+	public settings: ChordsPluginSettings = { ...DEFAULT_SETTINGS, chords: [], groups: [] };
 	public chordManager!: ChordManager;
 
 	/**
@@ -29,6 +29,7 @@ export default class ChordsPlugin extends Plugin {
 		await this.loadSettings();
 
 		this.chordManager = new ChordManager(this);
+		this.chordManager.syncGroupCommands();
 
 		this.addSettingTab(new ChordsSettingTab(this.app, this));
 
@@ -51,8 +52,9 @@ export default class ChordsPlugin extends Plugin {
 		this.settings = {
 			...DEFAULT_SETTINGS,
 			...data,
-			// Never share the default array, chords are mutated in place
+			// Never share the default arrays, chords and groups are mutated in place
 			chords: Array.isArray(data?.chords) ? data.chords : [],
+			groups: Array.isArray(data?.groups) ? data.groups : [],
 		};
 	}
 

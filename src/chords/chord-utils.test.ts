@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { dropIndex, isChordActive, matchesChordFilter, moveItem, normalizeKey } from "./chord-utils";
+import {
+	createGroupId,
+	dropIndex,
+	findChordGroup,
+	groupDisplayName,
+	isChordActive,
+	matchesChordFilter,
+	moveItem,
+	normalizeKey,
+} from "./chord-utils";
 
 describe("normalizeKey", () => {
 	it("makes key order irrelevant", () => {
@@ -24,6 +33,55 @@ describe("isChordActive", () => {
 
 	it("is false for a chord that's turned off", () => {
 		expect(isChordActive({ enabled: false })).toBe(false);
+	});
+
+	const groups = [
+		{ id: "on", enabled: true },
+		{ id: "off", enabled: false },
+	];
+
+	it("follows the chord's group", () => {
+		expect(isChordActive({ groupId: "on" }, groups)).toBe(true);
+		expect(isChordActive({ groupId: "off" }, groups)).toBe(false);
+	});
+
+	it("keeps a chord off in an enabled group", () => {
+		expect(isChordActive({ groupId: "on", enabled: false }, groups)).toBe(false);
+	});
+
+	it("treats a chord whose group is gone as ungrouped", () => {
+		expect(isChordActive({ groupId: "deleted" }, groups)).toBe(true);
+	});
+});
+
+describe("findChordGroup", () => {
+	const groups = [{ id: "a" }, { id: "b" }];
+
+	it("finds the group by id", () => {
+		expect(findChordGroup({ groupId: "b" }, groups)).toBe(groups[1]);
+	});
+
+	it("returns undefined for ungrouped chords and unknown groups", () => {
+		expect(findChordGroup({}, groups)).toBeUndefined();
+		expect(findChordGroup({ groupId: "c" }, groups)).toBeUndefined();
+	});
+});
+
+describe("groupDisplayName", () => {
+	it("uses the name, or a placeholder for unnamed groups", () => {
+		expect(groupDisplayName({ name: "Math" })).toBe("Math");
+		expect(groupDisplayName({ name: "  " })).toBe("Untitled group");
+	});
+});
+
+describe("createGroupId", () => {
+	it("creates ids that aren't in use", () => {
+		const groups: { id: string }[] = [];
+		for (let i = 0; i < 50; i++) {
+			groups.push({ id: createGroupId(groups) });
+		}
+		expect(new Set(groups.map(group => group.id)).size).toBe(50);
+		expect(groups.every(group => group.id !== "")).toBe(true);
 	});
 });
 
@@ -75,6 +133,11 @@ describe("matchesChordFilter", () => {
 		expect(matchesChordFilter(chord, "Command", "current")).toBe(true);
 		expect(matchesChordFilter(chord, "Command", "comm")).toBe(true);
 		expect(matchesChordFilter(chord, "Command", "template")).toBe(false);
+	});
+
+	it("matches the group name", () => {
+		expect(matchesChordFilter(chord, "Command", "math", "Math")).toBe(true);
+		expect(matchesChordFilter(chord, "Command", "math")).toBe(false);
 	});
 
 	it("matches everything when the filter is empty", () => {

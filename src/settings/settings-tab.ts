@@ -39,6 +39,17 @@ export default class ChordsSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
+		new Setting(this.containerEl)
+			.setName("Commands to toggle chord groups")
+			.setDesc("Add a command for each chord group that turns the group on or off, so groups can be switched from the command palette or with a hotkey. A notice shows the group's new state.")
+			.addToggle(toggle => toggle
+				.setValue(this.settings.groupToggleCommands)
+				.onChange(async value => {
+					this.settings.groupToggleCommands = value;
+					this.plugin.chordManager.syncGroupCommands();
+					await this.plugin.saveSettings();
+				}));
+
 		new Setting(this.containerEl).setName("Notices").setHeading();
 		this.addNoticeToggle("Text", "Show a notice when a text chord is executed", "showTextChordExecuted");
 		this.addNoticeToggle("Template", "Show a notice when a template chord is executed", "showTemplateChordExecuted");
@@ -55,9 +66,14 @@ export default class ChordsSettingTab extends PluginSettingTab {
 
 		new Setting(this.containerEl)
 			.setName("Chords")
-			.setDesc("Type a chord's keys at the same time, in any order, to trigger it.")
+			.setDesc("Type a chord's keys at the same time, in any order, to trigger it. Groups organize chords and turn them on or off together.")
 			.setHeading();
 		new ChordListEditor(this.plugin, this.containerEl);
+	}
+
+	public hide(): void {
+		this.plugin.chordManager.onGroupToggled = null;
+		super.hide();
 	}
 
 	/**

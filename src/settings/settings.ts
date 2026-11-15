@@ -1,4 +1,4 @@
-import type { ChordData } from "../chords/chord-types";
+import type { ChordData, ChordGroup } from "../chords/chord-types";
 
 /**
  * @member delay maximum duration (ms) between keys to be considered part of the chord. Delay needs to be less than the user's inter-character typing delay
@@ -8,7 +8,9 @@ import type { ChordData } from "../chords/chord-types";
  * @member showTemplateChordExecuted if we should display a notice when a template chord is executed
  * @member showFileChordExecuted if we should display a notice when a file chord is executed
  * @member showCommandChordExecuted if we should display a notice when a command chord is executed
+ * @member groupToggleCommands if every chord group gets a command that turns it on or off
  * @member chords array of user created chords
+ * @member groups array of user created chord groups, in display order
  */
 export interface ChordsPluginSettings {
 	delay: number;
@@ -18,7 +20,9 @@ export interface ChordsPluginSettings {
 	showTemplateChordExecuted: boolean;
 	showFileChordExecuted: boolean;
 	showCommandChordExecuted: boolean;
+	groupToggleCommands: boolean;
 	chords: ChordData[];
+	groups: ChordGroup[];
 }
 
 /**
@@ -50,7 +54,9 @@ export const DEFAULT_SETTINGS: Readonly<ChordsPluginSettings> = {
 	showTemplateChordExecuted: false,
 	showFileChordExecuted: false,
 	showCommandChordExecuted: true,
+	groupToggleCommands: false,
 	chords: [],
+	groups: [],
 };
 
 /**
