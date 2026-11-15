@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dropIndex, matchesChordFilter, moveItem, normalizeKey } from "./chord-utils";
+import { dropIndex, isChordActive, matchesChordFilter, moveItem, normalizeKey } from "./chord-utils";
 
 describe("normalizeKey", () => {
 	it("makes key order irrelevant", () => {
@@ -13,6 +13,17 @@ describe("normalizeKey", () => {
 
 	it("handles empty input", () => {
 		expect(normalizeKey("")).toBe("");
+	});
+});
+
+describe("isChordActive", () => {
+	it("treats chords saved without the flag as enabled", () => {
+		expect(isChordActive({})).toBe(true);
+		expect(isChordActive({ enabled: true })).toBe(true);
+	});
+
+	it("is false for a chord that's turned off", () => {
+		expect(isChordActive({ enabled: false })).toBe(false);
 	});
 });
 

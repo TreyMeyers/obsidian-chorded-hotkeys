@@ -14,11 +14,13 @@ export enum ChordType {
 
 /**
  * The format in which chords are saved
+ * @member enabled false when the chord is turned off; missing (chords saved by older versions) means enabled
  */
 export interface ChordData {
 	key: string;
 	value: string;
 	chordType: ChordType;
+	enabled?: boolean;
 }
 
 /**

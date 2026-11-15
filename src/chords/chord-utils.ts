@@ -8,6 +8,15 @@ export function normalizeKey(key: string): string {
 }
 
 /**
+ * Checks if a chord can be triggered
+ * @param chord chord to check
+ * @returns false if the chord is turned off
+ */
+export function isChordActive(chord: { enabled?: boolean }): boolean {
+	return chord.enabled !== false;
+}
+
+/**
  * Moves an item of an array to a new position, shifting the items in between
  * @param items array to modify
  * @param from index of the item to move

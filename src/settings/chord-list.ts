@@ -5,6 +5,7 @@ import {
 	SearchComponent,
 	TextAreaComponent,
 	TextComponent,
+	ToggleComponent,
 	setIcon,
 } from "obsidian";
 import type ChordsPlugin from "../main";
@@ -172,6 +173,13 @@ export default class ChordListEditor {
 		const valueEl = this.renderValueInput(fieldsEl, chord, index);
 
 		const actionsEl = rowEl.createDiv({ cls: "chords-row-actions" });
+		new ToggleComponent(actionsEl)
+			.setValue(chord.enabled !== false)
+			.setTooltip("Enable chord")
+			.onChange(async enabled => {
+				await manager.setChordEnabled(index, enabled);
+				this.refreshValidation();
+			});
 		new ExtraButtonComponent(actionsEl)
 			.setIcon("chevron-up")
 			.setTooltip("Move up")
@@ -311,15 +319,18 @@ export default class ChordListEditor {
 	}
 
 	/**
-	 * Highlights duplicate keys and values that don't refer to anything, and explains them under the chord.
+	 * Dims chords that are turned off, highlights duplicate keys and values that don't refer to anything,
+	 * and explains them under the chord.
 	 * Blank fields aren't flagged, a chord that's still being filled in isn't a mistake.
 	 */
 	private refreshValidation(): void {
 		const manager = this.plugin.chordManager;
 
-		this.rows.forEach(({ keyEl, valueEl, messageEl }, index) => {
+		this.rows.forEach(({ rowEl, keyEl, valueEl, messageEl }, index) => {
 			const chord = this.chords[index];
 			if (!chord) return;
+
+			rowEl.toggleClass("is-disabled", !manager.isActive(index));
 
 			const isDuplicate = chord.key !== "" && manager.isDuplicateKey(index);
 			const isInvalid = chord.value !== "" && !manager.hasValidValue(index);

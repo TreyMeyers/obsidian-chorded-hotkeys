@@ -3,7 +3,7 @@ import type { TextTarget } from "../targets/text-target";
 import type ChordsPlugin from "../main";
 import type { ChordsPluginSettings } from "../settings/settings";
 import { ChordData, ChordExecutor, ChordType } from "./chord-types";
-import { moveItem, normalizeKey } from "./chord-utils";
+import { isChordActive, moveItem, normalizeKey } from "./chord-utils";
 import executeTextChord from "./text-chord";
 import executeCommandChord, { findCommandByName } from "./command-chord";
 import executeTemplateChord from "./template-chord";
@@ -115,6 +115,30 @@ export default class ChordManager {
 	}
 
 	/**
+	 * Turns a chord on or off without deleting it
+	 * @param index index of chord in settings.chords
+	 * @param enabled if the chord can be triggered
+	 */
+	public async setChordEnabled(index: number, enabled: boolean): Promise<void> {
+		const chord = this.chords[index];
+		if (!chord) return;
+
+		chord.enabled = enabled;
+		this.rebuildIndex();
+		await this.plugin.saveSettings();
+	}
+
+	/**
+	 * Checks if a chord can currently be triggered
+	 * @param index index of chord in settings.chords
+	 * @returns false if the chord is turned off
+	 */
+	public isActive(index: number): boolean {
+		const chord = this.chords[index];
+		return chord !== undefined && isChordActive(chord);
+	}
+
+	/**
 	 * Deletes a chord
 	 * @param index index of chord in settings.chords
 	 */
@@ -145,16 +169,17 @@ export default class ChordManager {
 	}
 
 	/**
-	 * Checks if a chord's key is shared with another chord (both duplicates will return true)
+	 * Checks if a chord's key is shared with another chord (both duplicates will return true).
+	 * Chords that are turned off don't conflict with anything, so alternatives can share a key.
 	 * @param index index of chord in settings.chords
-	 * @returns if more than one chord has the same key
+	 * @returns if more than one active chord has the same key
 	 */
 	public isDuplicateKey(index: number): boolean {
 		const chord = this.chords[index];
-		if (!chord) return false;
+		if (!chord || !isChordActive(chord)) return false;
 
 		const key = normalizeKey(chord.key);
-		return this.chords.some((c, i) => i !== index && normalizeKey(c.key) === key);
+		return this.chords.some((c, i) => i !== index && isChordActive(c) && normalizeKey(c.key) === key);
 	}
 
 	/**
@@ -178,14 +203,15 @@ export default class ChordManager {
 	}
 
 	/**
-	 * Rebuilds the key -> chord mapping. When keys are duplicated, the first chord wins.
+	 * Rebuilds the key -> chord mapping, leaving out chords that are turned off.
+	 * When keys are duplicated, the first chord wins.
 	 */
 	private rebuildIndex(): void {
 		this.chordIndexes.clear();
 
 		this.chords.forEach((chord, index) => {
 			const key = normalizeKey(chord.key);
-			if (key && !this.chordIndexes.has(key)) {
+			if (key && isChordActive(chord) && !this.chordIndexes.has(key)) {
 				this.chordIndexes.set(key, index);
 			}
 		});

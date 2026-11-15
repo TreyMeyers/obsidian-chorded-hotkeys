@@ -66,6 +66,11 @@
 	box-shadow: 0 2px 0 0 var(--interactive-accent);
 }
 
+/* A chord that's turned off stays editable, but reads as inactive */
+.chords-row.is-disabled .chords-row-fields {
+	opacity: 0.5;
+}
+
 .chords-row-handle {
 	display: flex;
 	align-items: center;
@@ -107,6 +112,7 @@
 .chords-row-actions {
 	display: flex;
 	align-items: center;
+	gap: var(--size-2-1);
 	height: var(--input-height);
 }
 

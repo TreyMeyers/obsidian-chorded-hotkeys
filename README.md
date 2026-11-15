@@ -33,6 +33,9 @@ By default they also work in other text fields, such as search, the command pale
 
 Outside the editor, template chords still need an open note for Templater, and the cursor is placed at the first `tp.file.cursor()` marker.
 
+## Turning Chords Off
+Each chord has a toggle in the settings. A chord that's turned off is kept, but can't be triggered until you turn it back on. Chords that are turned off don't count as duplicates, so several alternatives can share a trigger as long as only one is on.
+
 ## Tags 
 A tag is a special element added to a chord to augment its effect.
 Currently there is only one tag, the cursor tag. Adding '{c}' in the value field of a text chord will move the cursor to that position upon activation.
