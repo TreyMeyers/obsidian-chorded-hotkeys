@@ -1,18 +1,142 @@
-.chords-search,
-.chords-text-area {
-	width: 100%;
+/* Chord list toolbar: filter + add button */
+.chords-toolbar {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-2) 0 var(--size-4-3);
 }
 
-.chords-key {
-	width: 15%;
+.chords-toolbar .search-input-container {
+	flex: 1;
+	min-width: 0;
 }
 
-.chords-text-area {
-	height: 30px;
+.chords-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+}
+
+.chords-empty {
+	padding: var(--size-4-8) var(--size-4-4);
+	border: 1px dashed var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	color: var(--text-muted);
+	text-align: center;
+}
+
+/* One chord: drag handle | fields | actions, with a message underneath the fields */
+.chords-row {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	align-items: start;
+	column-gap: var(--size-4-2);
+	padding: var(--size-4-2);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-primary);
+	transition: border-color 150ms ease, opacity 150ms ease;
+}
+
+.chords-row:hover,
+.chords-row:focus-within {
+	border-color: var(--background-modifier-border-hover);
+}
+
+.chords-row.is-new {
+	animation: chords-row-added 600ms ease-out;
+}
+
+@keyframes chords-row-added {
+	from {
+		border-color: var(--interactive-accent);
+		background-color: var(--background-modifier-hover);
+	}
+}
+
+.chords-row.is-dragging {
+	opacity: 0.4;
+}
+
+.chords-row.chords-drop-before {
+	box-shadow: 0 -2px 0 0 var(--interactive-accent);
+}
+
+.chords-row.chords-drop-after {
+	box-shadow: 0 2px 0 0 var(--interactive-accent);
+}
+
+.chords-row-handle {
+	display: flex;
+	align-items: center;
+	height: var(--input-height);
+	color: var(--text-faint);
+	cursor: grab;
+}
+
+.chords-row-handle:hover {
+	color: var(--text-muted);
+}
+
+.chords-row-fields {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: var(--size-4-2);
+	min-width: 0;
+}
+
+.chords-row-fields input.chords-key {
+	width: 6em;
+	font-family: var(--font-monospace);
+}
+
+.chords-row-fields .chords-value {
+	flex: 1 1 12em;
+	min-width: 0;
+}
+
+.chords-row-fields textarea.chords-text-area {
+	min-height: var(--input-height);
+	max-height: 12em;
 	resize: vertical;
+	/* Grows with its content where supported */
+	field-sizing: content;
 }
 
-.chords-error,
-.chords-error:focus {
+.chords-row-actions {
+	display: flex;
+	align-items: center;
+	height: var(--input-height);
+}
+
+.chords-row-message {
+	grid-column: 2;
+	color: var(--text-error);
+	font-size: var(--font-ui-smaller);
+}
+
+.chords-row-message:not(:empty) {
+	padding-top: var(--size-2-2);
+}
+
+/* Reordering: drag on desktop, buttons on touch devices, neither while the list is filtered */
+body:not(.is-mobile) .chords-row-move,
+.is-mobile .chords-row-handle,
+.chords-list.is-filtering .chords-row-move,
+.chords-list.is-filtering .chords-row-handle {
+	display: none;
+}
+
+.is-phone .chords-row-fields .chords-value {
+	flex-basis: 100%;
+}
+
+input.chords-error,
+input.chords-error:focus {
 	border-color: var(--text-error);
+}
+
+.search-input-container:has(> .chords-error) {
+	--background-modifier-border: var(--text-error);
 }

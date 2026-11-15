@@ -3,7 +3,7 @@ import type { TextTarget } from "../targets/text-target";
 import type ChordsPlugin from "../main";
 import type { ChordsPluginSettings } from "../settings/settings";
 import { ChordData, ChordExecutor, ChordType } from "./chord-types";
-import { normalizeKey } from "./chord-utils";
+import { moveItem, normalizeKey } from "./chord-utils";
 import executeTextChord from "./text-chord";
 import executeCommandChord, { findCommandByName } from "./command-chord";
 import executeTemplateChord from "./template-chord";
@@ -125,26 +125,21 @@ export default class ChordManager {
 	}
 
 	/**
-	 * Creates an empty text chord
+	 * Creates an empty text chord at the top of the list
 	 */
 	public async addBlankChord(): Promise<void> {
-		this.chords.push({ key: "", value: "", chordType: ChordType.Text });
+		this.chords.unshift({ key: "", value: "", chordType: ChordType.Text });
 		this.rebuildIndex();
 		await this.plugin.saveSettings();
 	}
 
 	/**
-	 * Swaps the position of two chords in settings.chords, used to change display order
-	 * @param index1 index of first chord
-	 * @param index2 index of second chord
+	 * Moves a chord to a new position in settings.chords, used to change display order
+	 * @param from index of the chord
+	 * @param to index the chord should end up at
 	 */
-	public async swapIndex(index1: number, index2: number): Promise<void> {
-		const chord1 = this.chords[index1];
-		const chord2 = this.chords[index2];
-		if (!chord1 || !chord2) return;
-
-		this.chords[index1] = chord2;
-		this.chords[index2] = chord1;
+	public async moveChord(from: number, to: number): Promise<void> {
+		moveItem(this.chords, from, to);
 		this.rebuildIndex();
 		await this.plugin.saveSettings();
 	}
